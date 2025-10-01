@@ -40,6 +40,94 @@ class _WhisperDetailPageState
     tag: Utils.makeHeroTag(Get.parameters['talkerId']),
   );
 
+  // ====== 新增：高级调试面板相关 ======
+  final TextEditingController advTitleController = TextEditingController();
+  final TextEditingController advContentController = TextEditingController();
+  final TextEditingController advImageController = TextEditingController();
+  final TextEditingController advUrlController = TextEditingController();
+  final RxString advSendResult = ''.obs;
+
+  @override
+  void dispose() {
+    advTitleController.dispose();
+    advContentController.dispose();
+    advImageController.dispose();
+    advUrlController.dispose();
+    super.dispose();
+  }
+
+  Widget buildAdvancedPanel() {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            const Text('调试面板 - 高级分享', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: advTitleController,
+              decoration: const InputDecoration(labelText: '标题'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: advContentController,
+              decoration: const InputDecoration(labelText: '内容'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: advImageController,
+              decoration: const InputDecoration(labelText: '图片URL'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: advUrlController,
+              decoration: const InputDecoration(labelText: '跳转链接'),
+            ),
+            const SizedBox(height: 16),
+            Obx(() => Text(
+              advSendResult.value,
+              style: TextStyle(color: theme.colorScheme.primary, fontSize: 13),
+            )),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.send),
+              label: const Text('高级私信发送'),
+              onPressed: () async {
+                final title = advTitleController.text.trim();
+                final content = advContentController.text.trim();
+                final image = advImageController.text.trim();
+                final url = advUrlController.text.trim();
+                if (title.isEmpty && content.isEmpty) {
+                  advSendResult.value = '请填写标题或内容';
+                  return;
+                }
+                // 构造自定义分享内容
+                final Map<String, dynamic> shareContent = {
+                  'title': title,
+                  'content': content,
+                  if (image.isNotEmpty) 'image': image,
+                  if (url.isNotEmpty) 'url': url,
+                  'debug': true,
+                };
+                try {
+                  await _whisperDetailController.sendMsg(
+                    message: '[高级分享]\n${shareContent.toString()}',
+                    onClearText: () {},
+                  );
+                  advSendResult.value = '发送成功';
+                } catch (e) {
+                  advSendResult.value = '发送失败: $e';
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  // ====== 新增结束 ======
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -255,6 +343,24 @@ class _WhisperDetailPageState
             icon: const Icon(Icons.emoji_emotions),
             tooltip: '表情',
           ),
+          // ====== 新增：高级发送按钮 ======
+          IconButton(
+            onPressed: () => updatePanelType(
+              panelType.value == PanelType.custom
+                  ? PanelType.keyboard
+                  : PanelType.custom,
+            ),
+            icon: Icon(
+              panelType.value == PanelType.custom
+                  ? Icons.keyboard
+                  : Icons.bug_report_outlined,
+              color: panelType.value == PanelType.custom
+                  ? theme.colorScheme.primary
+                  : null,
+            ),
+            tooltip: '高级发送',
+          ),
+          // ====== 新增结束 ======
           Expanded(
             child: Listener(
               onPointerUp: (event) {
@@ -357,7 +463,7 @@ class _WhisperDetailPageState
   }
 
   @override
-  Widget? get customPanel => EmotePanel(onChoose: onChooseEmote);
+  Widget? get customPanel => buildAdvancedPanel();
 
   @override
   Future<void> onCustomPublish({List? pictures}) {
