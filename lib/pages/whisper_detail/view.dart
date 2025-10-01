@@ -65,22 +65,22 @@ class _WhisperDetailPageState
           children: [
             const Text('调试面板 - 高级分享', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            TextField(
+            RichTextField(
               controller: advTitleController,
               decoration: const InputDecoration(labelText: '标题'),
             ),
             const SizedBox(height: 8),
-            TextField(
+            RichTextField(
               controller: advContentController,
               decoration: const InputDecoration(labelText: '内容'),
             ),
             const SizedBox(height: 8),
-            TextField(
+            RichTextField(
               controller: advImageController,
               decoration: const InputDecoration(labelText: '图片URL'),
             ),
             const SizedBox(height: 8),
-            TextField(
+            RichTextField(
               controller: advUrlController,
               decoration: const InputDecoration(labelText: '跳转链接'),
             ),
