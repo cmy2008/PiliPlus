@@ -41,10 +41,10 @@ class _WhisperDetailPageState
   );
 
   // ====== 新增：高级调试面板相关 ======
-  final TextEditingController advTitleController = TextEditingController();
-  final TextEditingController advContentController = TextEditingController();
-  final TextEditingController advImageController = TextEditingController();
-  final TextEditingController advUrlController = TextEditingController();
+  final RichTextEditingController advTitleController = RichTextEditingController();
+  final RichTextEditingController advContentController = RichTextEditingController();
+  final RichTextEditingController advImageController = RichTextEditingController();
+  final RichTextEditingController advUrlController = RichTextEditingController();
   final RxString advSendResult = ''.obs;
 
   @override
