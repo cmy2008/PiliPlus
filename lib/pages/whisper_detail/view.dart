@@ -22,6 +22,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
+import 'package:PiliPlus/common/widgets/text_field/controller.dart';
 
 class WhisperDetailPage extends CommonRichTextPubPage {
   const WhisperDetailPage({
