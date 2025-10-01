@@ -6,5 +6,6 @@
     "editor.codeActionsOnSave": {
         "source.organizeImports": "explicit",
         // "source.fixAll": "explicit",
-    }
+    },
+    "cmake.sourceDirectory": "D:/Projects/PiliPlus/windows"
 }

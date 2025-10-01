@@ -32,4 +32,24 @@ abstract class CommonTextPubPageState<T extends CommonTextPubPage>
     feedBack();
     return onCustomPublish();
   }
+
+  Widget get customPanelBtn => Obx(
+        () {
+          final isCustom = panelType.value == PanelType.custom;
+          return IconButton(
+            tooltip: isCustom ? '输入' : '自定义',
+            onPressed: () {
+              if (isCustom) {
+                updatePanelType(PanelType.keyboard);
+              } else {
+                updatePanelType(PanelType.custom);
+              }
+            },
+            icon: isCustom
+                ? const Icon(Icons.keyboard, size: 22)
+                : const Icon(Icons.list_alt, size: 22),
+            color: isCustom ? Theme.of(context).colorScheme.primary : null,
+          );
+        },
+      );
 }

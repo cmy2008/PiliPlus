@@ -34,6 +34,10 @@ abstract class CommonPublishPageState<T extends CommonPublishPage>
   late final RxBool readOnly = false.obs;
   late final RxBool enablePublish = false.obs;
 
+  // 新增：自定义面板的数据
+  final RxList<String> customList = <String>[].obs;
+  final TextEditingController customInputController = TextEditingController();
+
   bool hasPub = false;
   void initPubState();
 
@@ -62,6 +66,7 @@ abstract class CommonPublishPageState<T extends CommonPublishPage>
     }
     focusNode.dispose();
     editController.dispose();
+    customInputController.dispose(); // 新增
     if (Platform.isAndroid) {
       WidgetsBinding.instance.removeObserver(this);
     }
@@ -167,6 +172,46 @@ abstract class CommonPublishPageState<T extends CommonPublishPage>
 
   Widget buildMorePanel(ThemeData theme) => throw UnimplementedError();
 
+  Widget buildCustomPanel() {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        children: [
+          Expanded(
+            child: Obx(() => ListView.builder(
+                  itemCount: customList.length,
+                  itemBuilder: (context, idx) => ListTile(
+                    title: Text(customList[idx]),
+                  ),
+                )),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: customInputController,
+                  decoration: const InputDecoration(
+                    hintText: '请输入内容',
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.send),
+                onPressed: () {
+                  final text = customInputController.text.trim();
+                  if (text.isNotEmpty) {
+                    customList.add(text);
+                    customInputController.clear();
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget buildPanelContainer(ThemeData theme, [Color? panelBgColor]) {
     return ChatBottomPanelContainer<PanelType>(
       controller: controller,
@@ -178,6 +223,8 @@ abstract class CommonPublishPageState<T extends CommonPublishPage>
             return buildEmojiPickerPanel();
           case PanelType.more:
             return buildMorePanel(theme);
+          case PanelType.custom: // 新增
+            return buildCustomPanel();
           default:
             return const SizedBox.shrink();
         }

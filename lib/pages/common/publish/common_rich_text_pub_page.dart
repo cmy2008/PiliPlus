@@ -449,6 +449,36 @@ abstract class CommonRichTextPubPageState<T extends CommonRichTextPubPage>
     },
   );
 
+  Widget get customPanelBtn => Obx(
+    () {
+      final isCustom = panelType.value == PanelType.custom;
+      return ToolbarIconButton(
+        tooltip: isCustom ? '输入' : '自定义',
+        onPressed: () {
+          if (isCustom) {
+            updatePanelType(PanelType.keyboard);
+          } else {
+            updatePanelType(PanelType.custom);
+          }
+        },
+        icon: isCustom
+            ? const Icon(Icons.keyboard, size: 22)
+            : const Icon(Icons.list_alt, size: 22),
+        selected: isCustom,
+      );
+    },
+  );
+
+  // 工具栏按钮示例（可在 build 方法或 toolbar 处插入 customPanelBtn）
+  // Row(
+  //   children: [
+  //     emojiBtn,
+  //     atBtn,
+  //     moreBtn,
+  //     customPanelBtn, // 新增
+  //   ],
+  // )
+
   @override
   Future<void> onPublish() async {
     feedBack();

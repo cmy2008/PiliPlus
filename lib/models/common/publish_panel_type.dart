@@ -1,1 +1,1 @@
-enum PanelType { none, keyboard, emoji, more }
+enum PanelType { none, keyboard, emoji, more, custom }
