@@ -138,7 +138,7 @@ class OneClickDanmakuPanel extends StatelessWidget {
             width: 72,
             height: 30,
             child: TextField(
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: TextStyle(fontSize: 13, color: colorScheme.onSurface),
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -192,7 +192,7 @@ class OneClickDanmakuPanel extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: controller.currentPageEntries.length,
-              separatorBuilder: (_, __) => Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.08)),
+              separatorBuilder: (_, _) => Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.08)),
               itemBuilder: (context, index) {
                 final entry = controller.currentPageEntries[index];
                 return _buildDanmakuItem(context, controller, entry, colorScheme);

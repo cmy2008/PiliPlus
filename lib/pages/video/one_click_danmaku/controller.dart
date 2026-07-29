@@ -1,14 +1,15 @@
+import 'dart:convert' show utf8;
+import 'dart:typed_data' show Uint8List;
 import 'dart:ui' show Color;
 
 import 'package:flutter/material.dart' show TextEditingController;
 import 'package:PiliPlus/grpc/bilibili/community/service/dm/v1.pb.dart'
-    show DanmakuElem, DmColorfulType, DmSegMobileReply;
+    show DanmakuElem;
 import 'package:PiliPlus/grpc/dm.dart' show DmGrpc;
 import 'package:PiliPlus/http/danmaku.dart' show DanmakuHttp;
 import 'package:PiliPlus/http/loading_state.dart' show Success;
-import 'package:PiliPlus/pages/danmaku/controller.dart' show PlDanmakuController;
 import 'package:PiliPlus/pages/danmaku/danmaku_model.dart'
-    show DanmakuExtra, VideoDanmaku;
+    show VideoDanmaku;
 import 'package:PiliPlus/plugin/pl_player/controller.dart'
     show PlPlayerController;
 import 'package:PiliPlus/utils/storage_utils.dart' show StorageUtils;
@@ -17,6 +18,7 @@ import 'package:canvas_danmaku/canvas_danmaku.dart'
 import 'package:file_picker/file_picker.dart' show FilePicker, FileType;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
+import 'package:xml/xml.dart';
 
 class DanmakuEntry {
   final int progress;
@@ -35,14 +37,21 @@ class DanmakuEntry {
     this.isColorful = false,
   });
 
-  factory DanmakuEntry.fromDanmakuElem(DanmakuElem elem) {
+  factory DanmakuEntry.fromXmlElement(XmlElement element) {
+    final pAttr = element.getAttribute('p');
+    final content = element.innerText;
+    final parts = pAttr?.split(',') ?? [];
+    final time = parts.isNotEmpty ? double.tryParse(parts[0]) ?? 0.0 : 0.0;
+    final mode = parts.length > 1 ? int.tryParse(parts[1]) ?? 1 : 1;
+    final fontSize = parts.length > 2 ? int.tryParse(parts[2]) ?? 25 : 25;
+    final color = parts.length > 3 ? int.tryParse(parts[3]) ?? 16777215 : 16777215;
     return DanmakuEntry(
-      progress: elem.progress,
-      content: elem.content,
-      color: elem.color,
-      mode: elem.mode,
-      fontsize: elem.fontsize,
-      isColorful: elem.colorful == DmColorfulType.VipGradualColor,
+      progress: (time * 1000).round(),
+      content: content,
+      color: color,
+      mode: mode,
+      fontsize: fontSize,
+      isColorful: false,
     );
   }
 }
@@ -113,36 +122,27 @@ class OneClickDanmakuController extends GetxController {
   Future<void> importDanmaku() async {
     final result = await FilePicker.pickFile(
       type: FileType.custom,
-      allowedExtensions: const ['pb', 'bin', 'json'],
+      allowedExtensions: const ['xml'],
     );
     if (result == null) return;
     try {
-      final bytes = await result.xFile.readAsBytes();
-      if (bytes.isEmpty) {
+      final text = await result.xFile.readAsString();
+      if (text.trim().isEmpty) {
         SmartDialog.showToast('文件为空');
         return;
       }
-      DmSegMobileReply reply;
-      try {
-        reply = DmSegMobileReply.fromBuffer(bytes);
-      } catch (_) {
-        try {
-          final text = await result.xFile.readAsString();
-          reply = DmSegMobileReply.fromJson(text);
-        } catch (_) {
-          SmartDialog.showToast('文件格式不正确');
-          return;
-        }
-      }
-      if (reply.elems.isEmpty) {
+      final document = XmlDocument.parse(text);
+      final elements = document.findAllElements('d').toList();
+      if (elements.isEmpty) {
         SmartDialog.showToast('文件中无弹幕数据');
         return;
       }
-      reply.elems.sort((a, b) => a.progress.compareTo(b.progress));
-      _allEntries.clear();
-      for (final elem in reply.elems) {
-        _allEntries.add(DanmakuEntry.fromDanmakuElem(elem));
+      final entries = <DanmakuEntry>[];
+      for (final elem in elements) {
+        entries.add(DanmakuEntry.fromXmlElement(elem));
       }
+      entries.sort((a, b) => a.progress.compareTo(b.progress));
+      _allEntries.assignAll(entries);
       currentPage.value = 1;
       SmartDialog.showToast('已导入 ${_allEntries.length} 条弹幕');
     } catch (_) {
@@ -165,7 +165,7 @@ class OneClickDanmakuController extends GetxController {
         return;
       }
       final totalSegments =
-          (durationMs / PlDanmakuController.segmentLength).ceil();
+          (durationMs / 360000).ceil();
       for (int i = 0; i < totalSegments; i++) {
         final res = await DmGrpc.dmSegMobile(
           cid: cid,
@@ -180,14 +180,34 @@ class OneClickDanmakuController extends GetxController {
         SmartDialog.showToast('当前无弹幕可导出');
         return;
       }
-      final reply = DmSegMobileReply(elems: segments);
-      final bytes = reply.writeToBuffer();
+      final builder = XmlBuilder();
+      builder.processing('xml', 'version="1.0" encoding="utf-8"');
+      builder.element('i', nest: () {
+        for (final elem in segments) {
+          final timeSec = elem.progress / 1000.0;
+          final p = [
+            timeSec.toStringAsFixed(3),
+            elem.mode.toString(),
+            elem.fontsize.toString(),
+            elem.color.toString(),
+            (elem.ctime.toInt()).toString(),
+            '0',
+            elem.midHash,
+            elem.id.toInt().toString(),
+          ].join(',');
+          builder.element('d', nest: () {
+            builder.attribute('p', p);
+            builder.text(elem.content);
+          });
+        }
+      });
+      final xmlStr = builder.buildDocument().toXmlString(pretty: true);
       SmartDialog.dismiss();
       await StorageUtils.saveBytes2File(
         name:
-            'danmaku_${cid}_${DateTime.now().millisecondsSinceEpoch}.pb',
-        bytes: bytes,
-        allowedExtensions: const ['pb', 'bin'],
+            'danmaku_${cid}_${DateTime.now().millisecondsSinceEpoch}.xml',
+        bytes: Uint8List.fromList(utf8.encode(xmlStr)),
+        allowedExtensions: const ['xml'],
       );
     } catch (e) {
       SmartDialog.dismiss();
