@@ -1423,6 +1423,23 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                 ),
               ),
             ),
+            SizedBox(
+              height: 32,
+              child: TextButton(
+                style: const ButtonStyle(
+                  padding: WidgetStatePropertyAll(.zero),
+                ),
+                onPressed:
+                    videoDetailController.showOneClickDanmakuPanel,
+                child: Text(
+                  '一键发送',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: themeData.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
             SizedBox.square(
               dimension: 38,
               child: Obx(

@@ -1928,6 +1928,20 @@ class HeaderControlState extends State<HeaderControl>
                 SizedBox(
                   width: btnWidth,
                   height: btnHeight,
+                  child: IconButton(
+                    tooltip: '一键发送',
+                    style: btnStyle,
+                    onPressed: videoDetailCtr.showOneClickDanmakuPanel,
+                    icon: const Icon(
+                      Icons.send,
+                      size: 17,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: btnWidth,
+                  height: btnHeight,
                   child: Obx(
                     () {
                       final enableShowDanmaku =

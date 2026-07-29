@@ -43,6 +43,7 @@ import 'package:PiliPlus/pages/video/introduction/ugc/controller.dart';
 import 'package:PiliPlus/pages/video/medialist/view.dart';
 import 'package:PiliPlus/pages/video/note/view.dart';
 import 'package:PiliPlus/pages/video/post_panel/view.dart';
+import 'package:PiliPlus/pages/video/one_click_danmaku/view.dart';
 import 'package:PiliPlus/pages/video/send_danmaku/view.dart';
 import 'package:PiliPlus/pages/video/widgets/header_control.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
@@ -627,6 +628,33 @@ class VideoDetailController extends GetxController
             },
             dmConfig: dmConfig,
             onSaveDmConfig: (dmConfig) => this.dmConfig = dmConfig,
+          );
+          if (plPlayerController.darkVideoPage) {
+            return Theme(data: ThemeUtils.darkTheme, child: child);
+          }
+          return child;
+        },
+      ),
+    );
+    if (isPlaying) {
+      plPlayerController.play();
+    }
+  }
+
+  /// 一键发送弹幕
+  Future<void> showOneClickDanmakuPanel() async {
+    final isPlaying =
+        _autoPlay.value && plPlayerController.playerStatus.isPlaying;
+    if (isPlaying) {
+      await plPlayerController.pause();
+    }
+    await Get.key.currentState!.push(
+      PublishRoute(
+        pageBuilder: (buildContext, animation, secondaryAnimation) {
+          final child = OneClickDanmakuPanel(
+            plPlayerController: plPlayerController,
+            cid: cid.value,
+            bvid: bvid,
           );
           if (plPlayerController.darkVideoPage) {
             return Theme(data: ThemeUtils.darkTheme, child: child);
