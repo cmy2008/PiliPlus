@@ -1,4 +1,4 @@
-import 'dart:convert' show utf8;
+import 'dart:convert' show utf8, jsonEncode, jsonDecode;
 import 'dart:typed_data' show Uint8List;
 import 'dart:ui' show Color;
 
@@ -12,6 +12,7 @@ import 'package:PiliPlus/pages/danmaku/danmaku_model.dart'
     show VideoDanmaku;
 import 'package:PiliPlus/plugin/pl_player/controller.dart'
     show PlPlayerController;
+import 'package:PiliPlus/utils/storage.dart' show GStorage;
 import 'package:PiliPlus/utils/storage_utils.dart' show StorageUtils;
 import 'package:canvas_danmaku/canvas_danmaku.dart'
     show DanmakuContentItem, DanmakuItemType;
@@ -54,6 +55,22 @@ class DanmakuEntry {
       isColorful: false,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'progress': progress,
+    'content': content,
+    'color': color,
+    'mode': mode,
+    'fontsize': fontsize,
+  };
+
+  factory DanmakuEntry.fromJson(Map<String, dynamic> json) => DanmakuEntry(
+    progress: json['progress'] as int,
+    content: json['content'] as String,
+    color: json['color'] as int,
+    mode: json['mode'] as int? ?? 1,
+    fontsize: json['fontsize'] as int? ?? 25,
+  );
 }
 
 class OneClickDanmakuController extends GetxController {
@@ -67,10 +84,12 @@ class OneClickDanmakuController extends GetxController {
     required this.bvid,
   }) {
     jumpRangeController = TextEditingController(text: jumpRange.value.toString());
+    _loadFromStorage();
   }
 
   @override
   void onClose() {
+    _saveToStorage();
     jumpRangeController.dispose();
     super.onClose();
   }
@@ -82,6 +101,30 @@ class OneClickDanmakuController extends GetxController {
   final RxDouble jumpRange = 10.0.obs;
   late final TextEditingController jumpRangeController;
   static const int pageSize = 10;
+  bool _loadedFromStorage = false;
+
+  String get _storageKey => 'one_click_dm_$cid';
+
+  void _saveToStorage() {
+    if (_allEntries.isEmpty) {
+      GStorage.setting.delete(_storageKey);
+    } else {
+      final data = _allEntries.map((e) => e.toJson()).toList();
+      GStorage.setting.put(_storageKey, jsonEncode(data));
+    }
+  }
+
+  void _loadFromStorage() {
+    if (_loadedFromStorage) return;
+    _loadedFromStorage = true;
+    try {
+      final raw = GStorage.setting.get(_storageKey) as String?;
+      if (raw == null || raw.isEmpty) return;
+      final list = jsonDecode(raw) as List;
+      final entries = list.map((e) => DanmakuEntry.fromJson(e as Map<String, dynamic>)).toList();
+      _allEntries.assignAll(entries);
+    } catch (_) {}
+  }
 
   int get totalPages {
     final count = _allEntries.length;
@@ -144,6 +187,7 @@ class OneClickDanmakuController extends GetxController {
       entries.sort((a, b) => a.progress.compareTo(b.progress));
       _allEntries.assignAll(entries);
       currentPage.value = 1;
+      _saveToStorage();
       SmartDialog.showToast('已导入 ${_allEntries.length} 条弹幕');
     } catch (_) {
       SmartDialog.showToast('文件格式不正确');
@@ -164,8 +208,7 @@ class OneClickDanmakuController extends GetxController {
         SmartDialog.showToast('播放器尚未就绪');
         return;
       }
-      final totalSegments =
-          (durationMs / 360000).ceil();
+      final totalSegments = (durationMs / 360000).ceil();
       for (int i = 0; i < totalSegments; i++) {
         final res = await DmGrpc.dmSegMobile(
           cid: cid,
@@ -180,32 +223,16 @@ class OneClickDanmakuController extends GetxController {
         SmartDialog.showToast('当前无弹幕可导出');
         return;
       }
-      final builder = XmlBuilder();
-      builder.processing('xml', 'version="1.0" encoding="utf-8"');
-      builder.element('i', nest: () {
-        for (final elem in segments) {
-          final timeSec = elem.progress / 1000.0;
-          final p = [
-            timeSec.toStringAsFixed(3),
-            elem.mode.toString(),
-            elem.fontsize.toString(),
-            elem.color.toString(),
-            (elem.ctime.toInt()).toString(),
-            '0',
-            elem.midHash,
-            elem.id.toInt().toString(),
-          ].join(',');
-          builder.element('d', nest: () {
-            builder.attribute('p', p);
-            builder.text(elem.content);
-          });
-        }
-      });
-      final xmlStr = builder.buildDocument().toXmlString(pretty: true);
+      final xmlStr = _buildXml(segments.map((e) => DanmakuEntry(
+        progress: e.progress,
+        content: e.content,
+        color: e.color,
+        mode: e.mode,
+        fontsize: e.fontsize,
+      )).toList());
       SmartDialog.dismiss();
       await StorageUtils.saveBytes2File(
-        name:
-            'danmaku_${cid}_${DateTime.now().millisecondsSinceEpoch}.xml',
+        name: 'danmaku_${cid}_${DateTime.now().millisecondsSinceEpoch}.xml',
         bytes: Uint8List.fromList(utf8.encode(xmlStr)),
         allowedExtensions: const ['xml'],
       );
@@ -213,6 +240,41 @@ class OneClickDanmakuController extends GetxController {
       SmartDialog.dismiss();
       SmartDialog.showToast('导出失败: $e');
     }
+  }
+
+  Future<void> saveDanmaku() async {
+    if (_allEntries.isEmpty) {
+      SmartDialog.showToast('无待发送弹幕');
+      return;
+    }
+    final xmlStr = _buildXml(_allEntries.toList());
+    await StorageUtils.saveBytes2File(
+      name: 'one_click_dm_${cid}_${DateTime.now().millisecondsSinceEpoch}.xml',
+      bytes: Uint8List.fromList(utf8.encode(xmlStr)),
+      allowedExtensions: const ['xml'],
+    );
+  }
+
+  String _buildXml(List<DanmakuEntry> entries) {
+    final builder = XmlBuilder();
+    builder.processing('xml', 'version="1.0" encoding="utf-8"');
+    builder.element('i', nest: () {
+      for (final entry in entries) {
+        final timeSec = entry.progress / 1000.0;
+        final p = [
+          timeSec.toStringAsFixed(3),
+          entry.mode.toString(),
+          entry.fontsize.toString(),
+          entry.color.toString(),
+          '0', '0', '', '0',
+        ].join(',');
+        builder.element('d', nest: () {
+          builder.attribute('p', p);
+          builder.text(entry.content);
+        });
+      }
+    });
+    return builder.buildDocument().toXmlString(pretty: true);
   }
 
   Future<void> sendDanmaku(DanmakuEntry entry) async {
@@ -236,7 +298,7 @@ class OneClickDanmakuController extends GetxController {
     final res = await DanmakuHttp.shootDanmaku(
       oid: cid,
       bvid: bvid,
-      progress: plPlayerController.positionInMilliseconds,
+      progress: entry.progress,
       msg: entry.content,
       mode: entry.mode,
       fontSize: entry.fontsize,
@@ -245,6 +307,7 @@ class OneClickDanmakuController extends GetxController {
     );
 
     if (res case Success(:final response)) {
+      removeEntry(entry);
       SmartDialog.showToast('已发送');
       VideoDanmaku? extra;
       if (response.dmid case final dmid?) {

@@ -35,7 +35,7 @@ class OneClickDanmakuPanel extends StatelessWidget {
     final colorScheme = themeData.colorScheme;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.5,
       decoration: BoxDecoration(
         color: themeData.scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -73,12 +73,7 @@ class OneClickDanmakuPanel extends StatelessWidget {
           const Spacer(),
           IconButton(
             icon: Icon(Icons.close, size: 20, color: colorScheme.onSurfaceVariant),
-            onPressed: () {
-              Get.back();
-              Get.delete<OneClickDanmakuController>(
-                tag: 'one_click_danmaku_$cid',
-              );
-            },
+            onPressed: () => Get.back(),
           ),
         ],
       ),
@@ -97,6 +92,12 @@ class OneClickDanmakuPanel extends StatelessWidget {
           _actionButton('导入', () => controller.importDanmaku(), colorScheme),
           const SizedBox(width: 8),
           _actionButton('导出', () => controller.exportDanmaku(), colorScheme),
+          const SizedBox(width: 8),
+          Obx(() => _actionButton(
+            '保存待发送',
+            controller.isEmpty ? null : () => controller.saveDanmaku(),
+            colorScheme,
+          )),
         ],
       ),
     );
@@ -104,21 +105,23 @@ class OneClickDanmakuPanel extends StatelessWidget {
 
   Widget _actionButton(
     String label,
-    VoidCallback onTap,
+    VoidCallback? onTap,
     ColorScheme colorScheme,
   ) {
     return SizedBox(
       height: 32,
       child: TextButton(
         style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          foregroundColor: onTap != null ? colorScheme.onSurfaceVariant : colorScheme.outline,
+          disabledForegroundColor: colorScheme.outline,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6),
             side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.3)),
           ),
         ),
         onPressed: onTap,
-        child: Text(label, style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant)),
+        child: Text(label, style: const TextStyle(fontSize: 12)),
       ),
     );
   }
@@ -256,10 +259,7 @@ class OneClickDanmakuPanel extends StatelessWidget {
                   side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.4)),
                 ),
               ),
-              onPressed: () {
-                controller.removeEntry(entry);
-                controller.sendDanmaku(entry);
-              },
+              onPressed: () => controller.sendDanmaku(entry),
               child: Text(
                 '发送',
                 style: TextStyle(fontSize: 12, color: colorScheme.primary),
