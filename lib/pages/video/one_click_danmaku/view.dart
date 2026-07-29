@@ -35,7 +35,9 @@ class OneClickDanmakuPanel extends StatelessWidget {
     final colorScheme = themeData.colorScheme;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.5,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.6,
+      ),
       decoration: BoxDecoration(
         color: themeData.scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -73,7 +75,7 @@ class OneClickDanmakuPanel extends StatelessWidget {
           const Spacer(),
           IconButton(
             icon: Icon(Icons.close, size: 20, color: colorScheme.onSurfaceVariant),
-            onPressed: () => Get.back(),
+            onPressed: Get.back,
           ),
         ],
       ),

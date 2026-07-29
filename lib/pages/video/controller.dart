@@ -648,20 +648,22 @@ class VideoDetailController extends GetxController
     if (isPlaying) {
       await plPlayerController.pause();
     }
-    await Get.key.currentState!.push(
-      PublishRoute(
-        pageBuilder: (buildContext, animation, secondaryAnimation) {
-          final child = OneClickDanmakuPanel(
-            plPlayerController: plPlayerController,
-            cid: cid.value,
-            bvid: bvid,
-          );
-          if (plPlayerController.darkVideoPage) {
-            return Theme(data: ThemeUtils.darkTheme, child: child);
-          }
-          return child;
-        },
-      ),
+    if (!Get.context!.mounted) return;
+    await showModalBottomSheet(
+      context: Get.context!,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final child = OneClickDanmakuPanel(
+          plPlayerController: plPlayerController,
+          cid: cid.value,
+          bvid: bvid,
+        );
+        if (plPlayerController.darkVideoPage) {
+          return Theme(data: ThemeUtils.darkTheme, child: child);
+        }
+        return child;
+      },
     );
     if (isPlaying) {
       plPlayerController.play();
